@@ -1,0 +1,12 @@
+{
+  "raw": {
+    "status": "error",
+    "code": "E_BAD",
+    "message": "bad request"
+  },
+  "expected": {
+    "status": "error",
+    "error_code": "E_BAD",
+    "error_message": "bad request"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "raw": {
+    "status": "expired",
+    "id": "OID_EXPIRED"
+  },
+  "expected": {
+    "status": "expired",
+    "order_id": "OID_EXPIRED"
+  }
+}

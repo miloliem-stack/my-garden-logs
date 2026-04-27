@@ -1,0 +1,16 @@
+{
+  "raw": {
+    "result": "filled",
+    "transactionHash": "0xfilled",
+    "id": "OID_FILLED",
+    "filled_qty": 5.0,
+    "remaining_qty": 0.0
+  },
+  "expected": {
+    "status": "filled",
+    "tx_hash": "0xfilled",
+    "order_id": "OID_FILLED",
+    "filled_qty": 5.0,
+    "remaining_qty": 0.0
+  }
+}

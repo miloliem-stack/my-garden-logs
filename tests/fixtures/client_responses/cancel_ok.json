@@ -1,0 +1,12 @@
+{
+  "raw": {
+    "status": "canceled",
+    "orderId": "OID_CANCEL_OK",
+    "clientOrderId": "CID_CANCEL_OK"
+  },
+  "expected": {
+    "status": "canceled",
+    "order_id": "OID_CANCEL_OK",
+    "client_order_id": "CID_CANCEL_OK"
+  }
+}

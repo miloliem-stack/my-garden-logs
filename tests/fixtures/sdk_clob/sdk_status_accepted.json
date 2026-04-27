@@ -1,0 +1,22 @@
+{
+  "raw": {
+    "orderID": "OID_SDK_ACCEPTED",
+    "status": "accepted",
+    "clientOrderId": "CID_SDK_ACCEPTED"
+  },
+  "raw_probe": {
+    "method": "POST",
+    "path": "/order",
+    "url": "https://clob.polymarket.com/order",
+    "request_body": {
+      "clientOrderId": "CID_SDK_ACCEPTED"
+    },
+    "http_status": 200,
+    "ok": true,
+    "response_json": {
+      "orderID": "OID_SDK_ACCEPTED",
+      "status": "accepted",
+      "clientOrderId": "CID_SDK_ACCEPTED"
+    }
+  }
+}

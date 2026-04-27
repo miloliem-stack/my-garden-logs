@@ -1,0 +1,16 @@
+{
+  "raw": {
+    "status": "partially_filled",
+    "orderId": "OID_PART",
+    "filledQuantity": 2.0,
+    "remainingQuantity": 3.0,
+    "avgPrice": 0.41
+  },
+  "expected": {
+    "status": "partially_filled",
+    "order_id": "OID_PART",
+    "filled_qty": 2.0,
+    "remaining_qty": 3.0,
+    "avg_price": 0.41
+  }
+}

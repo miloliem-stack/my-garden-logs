@@ -1,0 +1,15 @@
+numpy
+pandas
+scipy
+arch
+requests
+websockets
+sqlalchemy
+python-dotenv
+eth-account
+pytest
+pyarrow
+lightgbm
+scikit-learn
+py-clob-client
+web3

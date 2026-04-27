@@ -1,0 +1,22 @@
+{
+  "raw": {
+    "orderID": "OID_SDK_CANCELED",
+    "status": "canceled",
+    "remainingQuantity": 4.0
+  },
+  "raw_probe": {
+    "method": "DELETE",
+    "path": "/order",
+    "url": "https://clob.polymarket.com/order",
+    "request_body": {
+      "orderID": "OID_SDK_CANCELED"
+    },
+    "http_status": 200,
+    "ok": true,
+    "response_json": {
+      "orderID": "OID_SDK_CANCELED",
+      "status": "canceled",
+      "remainingQuantity": 4.0
+    }
+  }
+}

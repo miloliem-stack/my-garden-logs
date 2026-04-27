@@ -1,0 +1,13 @@
+{
+  "raw": {
+    "status": "rejected",
+    "code": "REJECTED",
+    "message": "order rejected"
+  },
+  "expected": {
+    "status": "rejected",
+    "error_code": "REJECTED",
+    "error_message": "order rejected",
+    "ok": false
+  }
+}

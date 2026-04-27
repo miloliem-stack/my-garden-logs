@@ -1,0 +1,14 @@
+{
+  "raw": {
+    "state": "open",
+    "id": "OID_OPEN",
+    "filledQuantity": 0.0,
+    "remainingQuantity": 5.0
+  },
+  "expected": {
+    "status": "open",
+    "order_id": "OID_OPEN",
+    "filled_qty": 0.0,
+    "remaining_qty": 5.0
+  }
+}

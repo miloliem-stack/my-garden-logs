@@ -1,0 +1,11 @@
+{
+  "raw": {
+    "status": "cancel_requested",
+    "orderId": "OID_CANCEL_REQ"
+  },
+  "expected": {
+    "status": "cancel_requested",
+    "order_id": "OID_CANCEL_REQ",
+    "ok": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "raw": {
+    "status": "accepted",
+    "orderId": "OID_ACCEPTED",
+    "clientOrderId": "CID_ACCEPTED"
+  },
+  "expected": {
+    "status": "accepted",
+    "order_id": "OID_ACCEPTED",
+    "client_order_id": "CID_ACCEPTED",
+    "tx_hash": null,
+    "filled_qty": null,
+    "remaining_qty": null,
+    "avg_price": null
+  }
+}

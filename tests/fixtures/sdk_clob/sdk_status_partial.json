@@ -1,0 +1,27 @@
+{
+  "raw": {
+    "orderID": "OID_SDK_PARTIAL",
+    "status": "partially_filled",
+    "fills": [
+      {
+        "id": "FILL_1",
+        "size": 2.0,
+        "price": 0.41
+      }
+    ],
+    "remainingQuantity": 3.0,
+    "avgPrice": 0.41
+  },
+  "raw_probe": {
+    "method": "GET",
+    "path": "/order/OID_SDK_PARTIAL",
+    "url": "https://clob.polymarket.com/order/OID_SDK_PARTIAL",
+    "request_body": null,
+    "http_status": 200,
+    "ok": true,
+    "response_json": {
+      "orderID": "OID_SDK_PARTIAL",
+      "status": "partially_filled"
+    }
+  }
+}

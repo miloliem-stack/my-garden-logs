@@ -1,0 +1,22 @@
+{
+  "raw": {
+    "status": "rejected",
+    "code": "ORDER_REJECTED",
+    "message": "order rejected"
+  },
+  "raw_probe": {
+    "method": "POST",
+    "path": "/order",
+    "url": "https://clob.polymarket.com/order",
+    "request_body": {
+      "clientOrderId": "CID_SDK_REJECTED"
+    },
+    "http_status": 400,
+    "ok": false,
+    "response_json": {
+      "status": "rejected",
+      "code": "ORDER_REJECTED",
+      "message": "order rejected"
+    }
+  }
+}

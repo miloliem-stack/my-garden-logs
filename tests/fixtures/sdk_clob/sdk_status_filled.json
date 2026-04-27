@@ -1,0 +1,27 @@
+{
+  "raw": {
+    "orderID": "OID_SDK_FILLED",
+    "status": "filled",
+    "fills": [
+      {
+        "id": "FILL_1",
+        "size": 5.0,
+        "price": 0.42
+      }
+    ],
+    "remainingQuantity": 0.0,
+    "transactionHash": "0xfilledsdk"
+  },
+  "raw_probe": {
+    "method": "GET",
+    "path": "/order/OID_SDK_FILLED",
+    "url": "https://clob.polymarket.com/order/OID_SDK_FILLED",
+    "request_body": null,
+    "http_status": 200,
+    "ok": true,
+    "response_json": {
+      "orderID": "OID_SDK_FILLED",
+      "status": "filled"
+    }
+  }
+}

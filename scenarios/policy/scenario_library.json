@@ -1,0 +1,234 @@
+{
+  "scenarios": [
+    {
+      "name": "valid_quotes_no_edge",
+      "split": "train",
+      "bundle": {
+        "series_id": "BTC-HOURLY",
+        "market_id": "MKT-1",
+        "token_yes": "YES-1",
+        "token_no": "NO-1",
+        "strike_price": 64000.0,
+        "start_time": "2026-03-16T12:00:00+00:00",
+        "end_time": "2026-03-16T13:00:00+00:00",
+        "status": "open"
+      },
+      "steps": [
+        {
+          "ts": "2026-03-16T12:10:00+00:00",
+          "spot_now": 64100.0,
+          "model_p_yes": 0.51,
+          "quotes": {
+            "yes": {"mid": 0.50, "best_bid": 0.49, "best_ask": 0.51, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false},
+            "no": {"mid": 0.49, "best_bid": 0.48, "best_ask": 0.50, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          }
+        }
+      ]
+    },
+    {
+      "name": "early_positive_yes_edge",
+      "split": "train",
+      "bundle": {
+        "series_id": "BTC-HOURLY",
+        "market_id": "MKT-2",
+        "token_yes": "YES-2",
+        "token_no": "NO-2",
+        "strike_price": 64000.0,
+        "start_time": "2026-03-16T12:00:00+00:00",
+        "end_time": "2026-03-16T13:00:00+00:00",
+        "status": "open"
+      },
+      "steps": [
+        {
+          "ts": "2026-03-16T12:05:00+00:00",
+          "spot_now": 64200.0,
+          "model_p_yes": 0.66,
+          "quotes": {
+            "yes": {"mid": 0.57, "best_bid": 0.56, "best_ask": 0.58, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false},
+            "no": {"mid": 0.38, "best_bid": 0.37, "best_ask": 0.39, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          },
+          "order_outcomes": {"submit": {"status": "filled", "filledQuantity": 1.0}}
+        }
+      ]
+    },
+    {
+      "name": "early_positive_no_edge",
+      "split": "train",
+      "bundle": {
+        "series_id": "BTC-HOURLY",
+        "market_id": "MKT-3",
+        "token_yes": "YES-3",
+        "token_no": "NO-3",
+        "strike_price": 64000.0,
+        "start_time": "2026-03-16T12:00:00+00:00",
+        "end_time": "2026-03-16T13:00:00+00:00",
+        "status": "open"
+      },
+      "steps": [
+        {
+          "ts": "2026-03-16T12:07:00+00:00",
+          "spot_now": 63850.0,
+          "model_p_yes": 0.39,
+          "quotes": {
+            "yes": {"mid": 0.46, "best_bid": 0.45, "best_ask": 0.47, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false},
+            "no": {"mid": 0.50, "best_bid": 0.49, "best_ask": 0.51, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          },
+          "order_outcomes": {"submit": {"status": "filled", "filledQuantity": 1.0}}
+        }
+      ]
+    },
+    {
+      "name": "late_edge_only_loose_thresholds",
+      "split": "train",
+      "bundle": {
+        "series_id": "BTC-HOURLY",
+        "market_id": "MKT-4",
+        "token_yes": "YES-4",
+        "token_no": "NO-4",
+        "strike_price": 64000.0,
+        "start_time": "2026-03-16T12:00:00+00:00",
+        "end_time": "2026-03-16T13:00:00+00:00",
+        "status": "open"
+      },
+      "steps": [
+        {
+          "ts": "2026-03-16T12:50:00+00:00",
+          "spot_now": 64080.0,
+          "model_p_yes": 0.53,
+          "quotes": {
+            "yes": {"mid": 0.515, "best_bid": 0.505, "best_ask": 0.525, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false},
+            "no": {"mid": 0.47, "best_bid": 0.46, "best_ask": 0.48, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          }
+        }
+      ]
+    },
+    {
+      "name": "stale_order_near_expiry",
+      "split": "validation",
+      "bundle": {
+        "series_id": "BTC-HOURLY",
+        "market_id": "MKT-5",
+        "token_yes": "YES-5",
+        "token_no": "NO-5",
+        "strike_price": 64000.0,
+        "start_time": "2026-03-16T12:00:00+00:00",
+        "end_time": "2026-03-16T13:00:00+00:00",
+        "status": "open"
+      },
+      "steps": [
+        {
+          "ts": "2026-03-16T12:57:00+00:00",
+          "spot_now": 64210.0,
+          "model_p_yes": 0.70,
+          "quotes": {
+            "yes": {"mid": 0.60, "best_bid": 0.59, "best_ask": 0.61, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false},
+            "no": {"mid": 0.34, "best_bid": 0.33, "best_ask": 0.35, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          },
+          "order_outcomes": {"submit": {"status": "open", "filledQuantity": 0.0}},
+          "maintenance": {
+            "age_sec": 120,
+            "refresh_response": {"status": "open", "filledQuantity": 0.0},
+            "cancel_response": {"status": "canceled", "filledQuantity": 0.0}
+          }
+        }
+      ]
+    },
+    {
+      "name": "merge_opportunity_near_expiry",
+      "split": "validation",
+      "bundle": {
+        "series_id": "BTC-HOURLY",
+        "market_id": "MKT-6",
+        "token_yes": "YES-6",
+        "token_no": "NO-6",
+        "strike_price": 64000.0,
+        "start_time": "2026-03-16T12:00:00+00:00",
+        "end_time": "2026-03-16T13:00:00+00:00",
+        "status": "open"
+      },
+      "seed_inventory": [
+        {"market_id": "MKT-6", "token_id": "YES-6", "outcome_side": "YES", "qty": 2.0, "avg_price": 0.40},
+        {"market_id": "MKT-6", "token_id": "NO-6", "outcome_side": "NO", "qty": 2.0, "avg_price": 0.38}
+      ],
+      "steps": [
+        {
+          "ts": "2026-03-16T12:48:00+00:00",
+          "spot_now": 64020.0,
+          "model_p_yes": 0.51,
+          "quotes": {
+            "yes": {"mid": 0.39, "best_bid": 0.38, "best_ask": 0.40, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false},
+            "no": {"mid": 0.39, "best_bid": 0.38, "best_ask": 0.40, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          },
+          "attempt_merge": true
+        }
+      ]
+    },
+    {
+      "name": "switch_to_next_hour",
+      "split": "validation",
+      "bundle": {
+        "series_id": "BTC-HOURLY",
+        "market_id": "MKT-7A",
+        "token_yes": "YES-7A",
+        "token_no": "NO-7A",
+        "strike_price": 64000.0,
+        "start_time": "2026-03-16T12:00:00+00:00",
+        "end_time": "2026-03-16T13:00:00+00:00",
+        "status": "open"
+      },
+      "steps": [
+        {
+          "ts": "2026-03-16T12:58:00+00:00",
+          "spot_now": 64050.0,
+          "model_p_yes": 0.54,
+          "quotes": {
+            "yes": {"mid": 0.51, "best_bid": 0.50, "best_ask": 0.52, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false},
+            "no": {"mid": 0.46, "best_bid": 0.45, "best_ask": 0.47, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          }
+        },
+        {
+          "ts": "2026-03-16T13:02:00+00:00",
+          "spot_now": 64120.0,
+          "model_p_yes": 0.61,
+          "bundle_override": {
+            "market_id": "MKT-7B",
+            "token_yes": "YES-7B",
+            "token_no": "NO-7B",
+            "strike_price": 64100.0,
+            "start_time": "2026-03-16T13:00:00+00:00",
+            "end_time": "2026-03-16T14:00:00+00:00"
+          },
+          "quotes": {
+            "yes": {"mid": 0.55, "best_bid": 0.54, "best_ask": 0.56, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false},
+            "no": {"mid": 0.40, "best_bid": 0.39, "best_ask": 0.41, "spread": 0.02, "age_seconds": 1, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          }
+        }
+      ]
+    },
+    {
+      "name": "missing_strike_invalid_quote_block",
+      "split": "stress",
+      "bundle": {
+        "series_id": "BTC-HOURLY",
+        "market_id": "MKT-8",
+        "token_yes": "YES-8",
+        "token_no": "NO-8",
+        "strike_price": null,
+        "start_time": "2026-03-16T12:00:00+00:00",
+        "end_time": "2026-03-16T13:00:00+00:00",
+        "status": "open"
+      },
+      "steps": [
+        {
+          "ts": "2026-03-16T12:20:00+00:00",
+          "spot_now": 64040.0,
+          "model_p_yes": 0.50,
+          "quotes": {
+            "yes": {"mid": null, "best_bid": null, "best_ask": null, "spread": null, "age_seconds": 999, "fetch_failed": true, "is_empty": true, "is_crossed": false},
+            "no": {"mid": 0.50, "best_bid": 0.49, "best_ask": 0.51, "spread": 0.02, "age_seconds": 999, "fetch_failed": false, "is_empty": false, "is_crossed": false}
+          }
+        }
+      ]
+    }
+  ]
+}

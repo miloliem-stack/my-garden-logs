@@ -1,0 +1,12 @@
+{
+  "raw": {
+    "state": "canceled",
+    "orderId": "OID_CANCELED",
+    "remainingQuantity": 4.0
+  },
+  "expected": {
+    "status": "canceled",
+    "order_id": "OID_CANCELED",
+    "remaining_qty": 4.0
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "exception": {
+    "status_code": null,
+    "error_msg": "Request exception!"
+  },
+  "raw_probe": {
+    "method": "POST",
+    "path": "/order",
+    "url": "https://clob.polymarket.com/order",
+    "request_body": {
+      "clientOrderId": "CID_SDK_TIMEOUT"
+    }
+  }
+}

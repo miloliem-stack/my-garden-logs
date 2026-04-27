@@ -1,0 +1,11 @@
+{
+  "raw": {
+    "status": "pending_submit",
+    "clientOrderId": "CID_PENDING"
+  },
+  "expected": {
+    "status": "pending_submit",
+    "client_order_id": "CID_PENDING",
+    "ok": false
+  }
+}

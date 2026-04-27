@@ -1,0 +1,11 @@
+{
+  "raw": {
+    "foo": "bar",
+    "http_status": 200
+  },
+  "expected": {
+    "status": "unknown",
+    "order_id": null,
+    "tx_hash": null
+  }
+}
