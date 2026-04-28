@@ -389,7 +389,6 @@ class RollingEventBuffer:
             "fills": fills,
             "partial_fills": partial_fills,
             "cancels_errors": cancels_errors,
-            "merge_attempts": sum(1 for event in recent if event["event_type"] == "merge_attempt"),
             "redeem_events": redeem_attempted,
             "redeems_attempted": redeem_attempted,
             "redeems_succeeded": redeem_succeeded,
@@ -424,9 +423,6 @@ def describe_event(event: Optional[dict]) -> Optional[str]:
     if event_type == "market_switch":
         market_id = event.get("new_market_id") or event.get("market_id")
         return f"market_switch {market_id or 'unknown'}"
-    if event_type == "merge_attempt":
-        status = event.get("status") or "attempted"
-        return f"merge {status}"
     if event_type == "redeem":
         status = event.get("status") or "attempted"
         return f"redeem {status}"

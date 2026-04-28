@@ -466,7 +466,7 @@ def test_engine_shadow_diagnostics_are_generic_and_heartbeat_safe() -> None:
                 "fetch_failed": False,
             },
             "quotes": {"yes": {"mid": 0.52, "age_seconds": 1.0}, "no": {"mid": 0.48, "age_seconds": 1.0}},
-            "position_summary": {"inflight_exposure": 0.0, "mergeable_qty": 0.0, "redeemable_qty": 0.0},
+            "position_summary": {"inflight_exposure": 0.0, "redeemable_qty": 0.0},
             "routing": {"series_id": "BTC-HOURLY", "active_market_id": "M1", "active_token_yes": "YES1", "active_token_no": "NO1"},
             "decision_state": {"q_yes": 0.52, "q_no": 0.48, "edge_yes": 0.03, "edge_no": -0.03, "action": "buy_yes"},
             "probability_state": {"tau_minutes": 20, "p_yes": 0.55, "p_no": 0.45},

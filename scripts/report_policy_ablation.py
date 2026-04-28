@@ -14,7 +14,6 @@ def build_variants(baselines):
     return {
         'baseline_conservative': baseline,
         'final_entries_allowed': {**baseline, 'POLICY_FINAL_ALLOW_NEW_ENTRIES': 'true'},
-        'late_merge_allowed': {**baseline, 'POLICY_LATE_ALLOW_MERGE': 'true', 'POLICY_FINAL_ALLOW_MERGE': 'true'},
         'symmetric_thresholds': {**baseline, 'POLICY_LATE_EDGE_THRESHOLD_YES': 0.02, 'POLICY_LATE_EDGE_THRESHOLD_NO': 0.02},
         'aggressive_kelly': {**baseline, 'POLICY_MID_KELLY_MULTIPLIER': 1.0, 'POLICY_LATE_KELLY_MULTIPLIER': 0.75},
         'tight_quotes': {**baseline, 'POLICY_MID_QUOTE_MAX_AGE_SEC': 3, 'POLICY_LATE_QUOTE_MAX_AGE_SEC': 2, 'POLICY_MID_QUOTE_MAX_SPREAD': 0.06, 'POLICY_LATE_QUOTE_MAX_SPREAD': 0.04},

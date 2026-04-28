@@ -27,7 +27,35 @@ def _as_bool(series: pd.Series) -> pd.Series:
     return series.fillna(False).astype(str).str.lower().isin(["true", "1", "yes", "y"])
 
 
-def apply_policy_flags(df: pd.DataFrame, *, confidence_threshold: float = 0.70, next_same_threshold: float = 0.65) -> pd.DataFrame:
+def _favoredness(df: pd.DataFrame) -> pd.Series:
+    side = _series(df, "vanilla_side", _series(df, "vanilla_action", "unknown")).fillna("unknown").astype(str).str.upper()
+    edge_yes = _numeric(df, "edge_yes_ask")
+    edge_no = _numeric(df, "edge_no_ask")
+    favored = pd.Series("unknown", index=df.index)
+    favored[(side.str.contains("YES")) & (edge_yes >= 0)] = "favored"
+    favored[(side.str.contains("YES")) & (edge_yes < 0)] = "contrarian"
+    favored[(side.str.contains("NO")) & (edge_no >= 0)] = "favored"
+    favored[(side.str.contains("NO")) & (edge_no < 0)] = "contrarian"
+    return favored
+
+
+def _add_grouping_dimensions(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["confidence_bucket"] = _bucket_confidence(_series(out, "hmm_map_confidence"))
+    out["q_tail_bucket"] = _bucket_tail(_series(out, "q_tail"))
+    out["side"] = _series(out, "vanilla_side", _series(out, "vanilla_action", "unknown")).fillna("unknown")
+    out["favoredness"] = _favoredness(out)
+    out["reversal_status"] = np.where(_as_bool(_series(out, "reversal_veto_flag", False)), "reversal_fail", "reversal_pass")
+    return out
+
+
+def apply_policy_flags(
+    df: pd.DataFrame,
+    *,
+    confidence_threshold: float = 0.70,
+    next_same_threshold: float = 0.65,
+    persistence_threshold: int = 2,
+) -> pd.DataFrame:
     out = df.copy()
     action = _series(out, "vanilla_action", "").fillna("")
     is_entry = action.astype(str).isin(ENTRY_ACTIONS) | action.astype(str).str.startswith("buy_")
@@ -42,6 +70,7 @@ def apply_policy_flags(df: pd.DataFrame, *, confidence_threshold: float = 0.70, 
         _series(out, "regime_policy_state", "").fillna("").eq("transition_uncertain")
         | (_numeric(out, "hmm_map_confidence", 1.0) < confidence_threshold)
         | (_numeric(out, "hmm_next_same_state_confidence", 1.0) < next_same_threshold)
+        | (_numeric(out, "hmm_map_state_persistence_count", persistence_threshold) < persistence_threshold)
     )
     out["policy0_trade"] = is_entry
     out["policy1_trade"] = is_entry & ~(growth <= 0)
@@ -67,6 +96,7 @@ def _metrics(df: pd.DataFrame, trade_col: str) -> dict:
         "realized_pnl_per_trade": float(pnl.mean()) if len(pnl) else 0.0,
         "mean_conservative_expected_log_growth": float(growth.mean()) if growth.notna().any() else np.nan,
         "hit_rate": float((pnl > 0).mean()) if len(pnl) else np.nan,
+        "bootstrap_ci_status": "computed" if len(pnl) >= 3 else "todo_min_3_trades",
     }
     valid = outcome.notna() & p_yes.notna()
     if valid.any():
@@ -104,10 +134,16 @@ def report_policy_replay(
     min_samples: int = 100,
     confidence_threshold: float = 0.70,
     next_same_threshold: float = 0.65,
+    persistence_threshold: int = 2,
 ) -> dict[str, pd.DataFrame]:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    df = apply_policy_flags(read_table(input_path), confidence_threshold=confidence_threshold, next_same_threshold=next_same_threshold)
+    df = apply_policy_flags(
+        read_table(input_path),
+        confidence_threshold=confidence_threshold,
+        next_same_threshold=next_same_threshold,
+        persistence_threshold=persistence_threshold,
+    )
     for col, default in [
         ("regime_policy_state", "unknown"),
         ("tau_bucket", "unknown"),
@@ -128,16 +164,13 @@ def report_policy_replay(
         ]]
     )
     by_regime_tau = df.groupby(["regime_policy_state", "tau_bucket"], dropna=False).apply(lambda g: pd.Series(_metrics(g, "policy3_trade"))).reset_index()
-    by_state_conf = df.assign(confidence_bucket=_bucket_confidence(_series(df, "hmm_map_confidence"))).groupby(
+    grouped_df = _add_grouping_dimensions(df)
+    by_state_conf = grouped_df.groupby(
         ["hmm_map_state", "confidence_bucket"], dropna=False, observed=False
     ).apply(lambda g: pd.Series(_metrics(g, "policy3_trade"))).reset_index()
-    candidates = df[df["default_ce_veto_block"]].copy()
-    candidates["confidence_bucket"] = _bucket_confidence(_series(candidates, "hmm_map_confidence"))
-    candidates["q_tail_bucket"] = _bucket_tail(_series(candidates, "q_tail"))
-    candidates["side"] = _series(candidates, "vanilla_side", _series(candidates, "vanilla_action", "unknown")).fillna("unknown")
-    candidates["favoredness"] = "unknown"
-    candidates["reversal_status"] = np.where(_as_bool(_series(candidates, "reversal_veto_flag", False)), "reversal_fail", "reversal_pass")
     group_cols = ["regime_policy_state", "hmm_map_state", "confidence_bucket", "tau_bucket", "q_tail_bucket", "side", "favoredness", "reversal_status"]
+    by_policy_dimensions = grouped_df.groupby(group_cols, dropna=False, observed=False).apply(lambda g: pd.Series(_metrics(g, "policy3_trade"))).reset_index()
+    candidates = grouped_df[grouped_df["default_ce_veto_block"]].copy()
     candidate_cells = candidates.groupby(group_cols, dropna=False, observed=False).agg(
         n_decisions=("timestamp", "count"),
         realized_pnl=("realized_pnl_binary", "sum"),
@@ -150,6 +183,7 @@ def report_policy_replay(
     candidate_cells["positive_conservative_expected_growth"] = candidate_cells["mean_conservative_expected_log_growth"] > 0
     candidate_cells["stable_across_folds"] = candidate_cells["fold_count"] >= 2
     state_duration = df.groupby(["fold_id", "hmm_map_state"], dropna=False).size().reset_index(name="rows") if "fold_id" in df.columns else pd.DataFrame()
+    fold_level_stability = df.groupby(["fold_id"], dropna=False).apply(lambda g: pd.Series(_metrics(g, "policy3_trade"))).reset_index()
     transition_summary = (
         df.assign(prev_state=df.get("hmm_map_state", pd.Series(index=df.index)).shift(1))
         .groupby(["prev_state", "hmm_map_state"], dropna=False)
@@ -160,8 +194,10 @@ def report_policy_replay(
         "policy_summary": summary,
         "policy_by_regime_tau": by_regime_tau,
         "policy_by_state_confidence": by_state_conf,
+        "policy_by_override_dimensions": by_policy_dimensions,
         "candidate_override_cells": candidate_cells,
         "state_duration_summary": state_duration,
+        "fold_level_stability": fold_level_stability,
         "transition_matrix_summary": transition_summary,
     }
     for name, table in outputs.items():

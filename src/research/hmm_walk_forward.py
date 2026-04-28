@@ -11,7 +11,7 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
 from .hmm_dataset import read_table, write_manifest, write_table
-from .hmm_features import HMM_FEATURE_COLUMNS, add_training_entropy_percentiles
+from .hmm_features import HMM_FEATURE_COLUMNS, add_training_entropy_percentiles, resolve_hmm_feature_columns
 
 
 @dataclass
@@ -57,6 +57,9 @@ class DiagGaussianHMM:
         return prob / max(prob.sum(), 1e-300)
 
     def filter_stream(self, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        # Causal forward filter only: each posterior uses the previous filtered
+        # posterior, the frozen transition matrix, and the current observation.
+        # No full-sequence Viterbi path or smoothed posterior is computed here.
         posteriors = []
         next_probs = []
         alpha = np.asarray(self.startprob_, dtype=float)
@@ -142,7 +145,7 @@ def run_walk_forward(
     df = read_table(input_path)
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df = df.sort_values("timestamp").reset_index(drop=True)
-    feature_columns = list(feature_columns or HMM_FEATURE_COLUMNS)
+    feature_columns = resolve_hmm_feature_columns(feature_columns or HMM_FEATURE_COLUMNS)
     folds = _folds_by_dates(
         df,
         {
@@ -196,6 +199,10 @@ def run_walk_forward(
                 "train_period": [tr_start.isoformat(), tr_end.isoformat()],
                 "test_period": [te_start.isoformat(), te_end.isoformat()],
                 "feature_columns": feature_columns,
+                "fit_scope": "train_window_only",
+                "posterior_method": "filtered_forward_probabilities_no_viterbi_no_smoothing",
+                "train_row_count": int(len(train)),
+                "test_row_count": int(len(test)),
                 "scaler_mean": scaler.mean_.tolist(),
                 "scaler_scale": scaler.scale_.tolist(),
                 "hmm_transition_matrix": model.transmat_.tolist(),
@@ -211,4 +218,3 @@ def run_walk_forward(
     write_table(result_df, out_dir / "hmm_walk_forward_output.csv", fmt="csv")
     write_manifest(out_dir / "fold_metadata.json", {"folds": metadata})
     return result_df
-

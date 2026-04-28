@@ -155,8 +155,6 @@ def _db_counts() -> Dict:
     counts['partial_fills'] = int(cur.fetchone()[0])
     cur.execute("SELECT COUNT(*) FROM bot_orders WHERE status = 'canceled'")
     counts['cancels'] = int(cur.fetchone()[0])
-    cur.execute('SELECT COUNT(*) FROM merged_lots')
-    counts['merged_lots_rows'] = int(cur.fetchone()[0])
     conn.close()
     return counts
 
@@ -185,9 +183,8 @@ def summarize_replay(decision_traces: List[Dict], max_exposure: float, last_quot
     conn.close()
     pnl_proxy = marked_value - open_cost
     final_bucket_trades = sum(1 for trace in decision_traces if trace.get('policy_bucket') == 'final' and trace.get('action') in ('buy_yes', 'buy_no'))
-    residual_inventory_count = sum(1 for item in snapshot if item.get('mergeable_pair_qty', 0) > 0 or item.get('resolved_redeemable_qty', 0) > 0)
+    residual_inventory_count = sum(1 for item in snapshot if item.get('resolved_redeemable_qty', 0) > 0)
     blocked_total = sum(blocked_reasons.values())
-    merge_value_component = counts['merged_lots_rows'] // 2
     score_components = {
         'pnl_proxy': pnl_proxy * (score_weights or {}).get('pnl_proxy', 1.0),
         'average_edge_at_entry': (sum(entry_edges) / len(entry_edges) if entry_edges else 0.0) * (score_weights or {}).get('average_edge_at_entry', 0.25),
@@ -196,12 +193,10 @@ def summarize_replay(decision_traces: List[Dict], max_exposure: float, last_quot
         'unresolved_inventory_penalty': -residual_inventory_count * (score_weights or {}).get('residual_inventory', 0.2),
         'final_bucket_trade_penalty': -final_bucket_trades * (score_weights or {}).get('final_bucket_trades', 0.5),
         'blocked_opportunity_penalty': -blocked_total * (score_weights or {}).get('blocked_opportunities', 0.05),
-        'merge_value_component': merge_value_component * (score_weights or {}).get('merge_value', 0.1),
     }
     total_score = sum(score_components.values())
     return {
         **counts,
-        'merges_completed': counts['merged_lots_rows'] // 2,
         'average_edge_at_entry': sum(entry_edges) / len(entry_edges) if entry_edges else 0.0,
         'max_exposure': max_exposure,
         'terminal_inventory_state': snapshot,
@@ -315,7 +310,7 @@ def run_replay_scenario(scenario: Dict, *, db_path: Path, output_dir: Optional[P
 
                     step_submit = dict((step.get('order_outcomes') or {}).get('submit') or {'status': 'filled', 'filledQuantity': 1.0})
 
-                    def _place_order(token_id, qty, limit_price=None, dry_run=True, market_id=None, outcome_side='YES', client_order_id=None):
+                    def _place_order(token_id, qty, limit_price=None, dry_run=True, market_id=None, outcome_side='YES', client_order_id=None, **kwargs):
                         original = execution.place_marketable_order
                         try:
                             payload = apply_execution_realism(
@@ -344,7 +339,6 @@ def run_replay_scenario(scenario: Dict, *, db_path: Path, output_dir: Optional[P
                     strategy_manager.place_marketable_buy = _place_order
                     action = None
                     stale_actions = []
-                    merge_result = None
                     if trade_allowed:
                         action = strategy_manager.build_trade_action(
                             decision_state,
@@ -372,7 +366,6 @@ def run_replay_scenario(scenario: Dict, *, db_path: Path, output_dir: Optional[P
                         'edge_yes': decision_state.get('edge_yes'),
                         'edge_no': decision_state.get('edge_no'),
                         'stale_actions_count': len(stale_actions),
-                        'merge_status': (merge_result or {}).get('status'),
                         'split': scenario.get('split'),
                     })
         finally:
@@ -422,7 +415,6 @@ def run_scenario_library(scenarios: Iterable[Dict], *, output_dir: Path, policy_
             'fills': sum(item['summary']['fills'] for item in runs),
             'partial_fills': sum(item['summary']['partial_fills'] for item in runs),
             'cancels': sum(item['summary']['cancels'] for item in runs),
-            'merges_completed': sum(item['summary']['merges_completed'] for item in runs),
             'average_edge_at_entry': sum(item['summary']['average_edge_at_entry'] for item in runs) / len(runs) if runs else 0.0,
             'max_exposure': max((item['summary']['max_exposure'] for item in runs), default=0.0),
             'pnl_proxy': sum(item['summary']['pnl_proxy'] for item in runs),

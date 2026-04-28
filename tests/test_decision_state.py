@@ -1147,22 +1147,12 @@ def test_polarized_tail_guard_does_not_penalize_non_tail_trade(monkeypatch):
     assert decision_state['polarized_tail_blocked'] is False
 
 
-def test_inventory_exit_sells_profitable_fifo_inventory_and_ignores_entry_policy(monkeypatch):
+def test_strategy_level_inventory_exit_is_disabled(monkeypatch):
     ts = datetime.now(timezone.utc).isoformat()
     storage.create_market('EXIT1', status='open')
     storage.create_open_lot('EXIT1', 'YES1', 'YES', 3.0, 0.40, ts)
-    monkeypatch.setattr(strategy_manager, 'RECYCLER_VENUE_QTY_HAIRCUT_PCT', 1.0)
-    monkeypatch.setattr(strategy_manager, 'INVENTORY_EXIT_MIN_PROFIT_PER_SHARE', 0.01)
-
     sell_calls = []
-    monkeypatch.setattr(
-        strategy_manager,
-        'place_marketable_sell',
-        lambda token_id, qty, limit_price=None, dry_run=True, market_id=None, outcome_side='YES', client_order_id=None, **kwargs: (
-            sell_calls.append((token_id, qty, limit_price, market_id, outcome_side))
-            or {'status': 'filled', 'submitted_qty': qty, 'filled_qty': qty, 'price': limit_price}
-        ),
-    )
+    monkeypatch.setattr(strategy_manager, 'place_marketable_sell', lambda *args, **kwargs: sell_calls.append((args, kwargs)), raising=False)
 
     action = strategy_manager.build_inventory_exit_action(
         'EXIT1',
@@ -1173,30 +1163,21 @@ def test_inventory_exit_sells_profitable_fifo_inventory_and_ignores_entry_policy
         dry_run=True,
     )
 
-    assert action['action'] == 'sell_yes'
-    assert action['exit_decision_source'] == 'recycle_open_market_inventory'
-    assert action['held_side'] == 'YES'
-    assert abs(action['entry_price'] - 0.40) < 1e-9
-    assert action['executable_exit_price'] == 0.56
-    assert action['expected_profit_per_share'] > 0
-    assert action['submitted_qty'] == 3.0
-    assert action['filled_qty'] == 3.0
-    assert action['avg_fill_price'] == 0.56
-    assert action['residual_qty'] == 0.0
-    assert sell_calls == [('YES1', 3.0, 0.56, 'EXIT1', 'YES')]
+    assert action['action'] == 'hold'
+    assert action['policy_type'] == 'inventory_exit_disabled'
+    assert action['skip_reason'] == 'strategy_inventory_exit_disabled'
+    assert action['submitted_qty'] == 0.0
+    assert action['filled_qty'] == 0.0
+    assert sell_calls == []
 
 
-def test_inventory_exit_is_not_blocked_by_entry_exposure_or_final_bucket(monkeypatch):
+def test_strategy_level_inventory_exit_disabled_with_two_sided_inventory(monkeypatch):
     ts = datetime.now(timezone.utc).isoformat()
     storage.create_market('EXIT2', status='open')
+    storage.create_open_lot('EXIT2', 'YES2', 'YES', 1.0, 0.70, ts)
     storage.create_open_lot('EXIT2', 'NO2', 'NO', 2.0, 0.30, ts)
-    monkeypatch.setattr(strategy_manager, 'RECYCLER_VENUE_QTY_HAIRCUT_PCT', 1.0)
-    monkeypatch.setattr(strategy_manager, 'INVENTORY_EXIT_MIN_PROFIT_PER_SHARE', 0.01)
-    monkeypatch.setattr(
-        strategy_manager,
-        'place_marketable_sell',
-        lambda *args, **kwargs: {'status': 'filled', 'submitted_qty': 2.0, 'filled_qty': 2.0, 'price': 0.45},
-    )
+    sell_calls = []
+    monkeypatch.setattr(strategy_manager, 'place_marketable_sell', lambda *args, **kwargs: sell_calls.append((args, kwargs)), raising=False)
 
     action = strategy_manager.build_inventory_exit_action(
         'EXIT2',
@@ -1207,139 +1188,11 @@ def test_inventory_exit_is_not_blocked_by_entry_exposure_or_final_bucket(monkeyp
         dry_run=True,
     )
 
-    assert action['action'] == 'sell_no'
-    assert action['filled_qty'] == 2.0
-
-
-def test_recycler_two_sided_lock_sells_both_sides(monkeypatch):
-    ts = datetime.now(timezone.utc).isoformat()
-    storage.create_market('PAIR1', status='open')
-    storage.create_open_lot('PAIR1', 'YESP', 'YES', 2.0, 0.41, ts)
-    storage.create_open_lot('PAIR1', 'NOP', 'NO', 3.0, 0.39, ts)
-    monkeypatch.setattr(strategy_manager, 'RECYCLER_VENUE_QTY_HAIRCUT_PCT', 1.0)
-    monkeypatch.setattr(strategy_manager, 'RECYCLER_PAIR_MAX_DISCOUNT_TO_PAYOUT', 0.03)
-    monkeypatch.setattr(strategy_manager.polymarket_client, 'get_tx_receipt', lambda tx_hash: {'transactionHash': tx_hash} if tx_hash else None)
-
-    calls = []
-
-    def fake_sell(token_id, qty, limit_price=None, dry_run=True, market_id=None, outcome_side='YES', client_order_id=None, **kwargs):
-        calls.append((token_id, qty, limit_price, outcome_side))
-        return {'status': 'filled', 'submitted_qty': qty, 'filled_qty': qty, 'price': limit_price, 'tx_hash': f'tx-{token_id}'}
-
-    monkeypatch.setattr(strategy_manager, 'place_marketable_sell', fake_sell)
-
-    action = strategy_manager.recycle_open_market_inventory(
-        'PAIR1',
-        'YESP',
-        'NOP',
-        {'best_bid': 0.51},
-        {'best_bid': 0.48},
-        dry_run=False,
-    )
-
-    assert action['action'] == 'recycle_pair'
-    assert action['trigger'] == 'two_sided_lock'
-    assert action['pair_qty'] == 2.0
-    assert [leg['action'] for leg in action['legs']] == ['sell_yes', 'sell_no']
-    assert calls == [('YESP', 2.0, 0.51, 'YES'), ('NOP', 2.0, 0.48, 'NO')]
-    disposals = storage.list_inventory_disposals('PAIR1')
-    assert any(item['classification'] == 'recycle_pair' and item['action'] == 'recycle_pair' for item in disposals)
-
-
-def test_recycler_pair_skips_when_existing_active_exit_order_present(monkeypatch):
-    ts = datetime.now(timezone.utc).isoformat()
-    storage.create_market('PAIRBLOCK', status='open')
-    storage.create_open_lot('PAIRBLOCK', 'YESPB', 'YES', 2.0, 0.41, ts)
-    storage.create_open_lot('PAIRBLOCK', 'NOPB', 'NO', 2.0, 0.39, ts)
-    storage.create_order('pairblock-sell', 'PAIRBLOCK', 'YESPB', 'YES', 'sell', 2.0, 0.51, 'open', ts)
-
-    calls = []
-
-    def fake_sell(token_id, qty, limit_price=None, dry_run=True, market_id=None, outcome_side='YES', client_order_id=None):
-        calls.append((token_id, qty, limit_price, outcome_side))
-        return {'status': 'filled', 'submitted_qty': qty, 'filled_qty': qty, 'price': limit_price}
-
-    monkeypatch.setattr(strategy_manager, 'place_marketable_sell', fake_sell)
-
-    action = strategy_manager.recycle_open_market_inventory(
-        'PAIRBLOCK',
-        'YESPB',
-        'NOPB',
-        {'best_bid': 0.51},
-        {'best_bid': 0.48},
-        dry_run=False,
-    )
-
     assert action['action'] == 'hold'
-    assert action['skip_reason'] == 'existing_active_exit_order'
-    assert action['trigger'] == 'two_sided_lock'
-    assert calls == []
-
-
-def test_recycler_shrinks_sell_qty_once_on_balance_shortfall(monkeypatch):
-    ts = datetime.now(timezone.utc).isoformat()
-    storage.create_market('SHRINK1', status='open')
-    storage.create_open_lot('SHRINK1', 'YESS', 'YES', 5.0, 0.40, ts)
-    monkeypatch.setattr(strategy_manager, 'RECYCLER_VENUE_QTY_HAIRCUT_PCT', 0.995)
-    monkeypatch.setattr(strategy_manager, 'RECYCLER_SHORTFALL_RETRY_SHRINK_PCT', 0.5)
-    monkeypatch.setattr(strategy_manager, 'INVENTORY_EXIT_MIN_PROFIT_PER_SHARE', 0.01)
-    monkeypatch.setattr(strategy_manager.polymarket_client, 'get_tx_receipt', lambda tx_hash: {'transactionHash': tx_hash} if tx_hash else None)
-
-    calls = []
-
-    def fake_sell(token_id, qty, limit_price=None, dry_run=True, market_id=None, outcome_side='YES', client_order_id=None, **kwargs):
-        calls.append(qty)
-        if len(calls) == 1:
-            return {
-                'status': 'error',
-                'raw_response_json': {
-                    'error_message': 'not enough balance / allowance: the balance is not enough -> balance: 1254420, order amount: 1260000',
-                },
-            }
-        return {'status': 'filled', 'submitted_qty': qty, 'filled_qty': qty, 'price': limit_price, 'tx_hash': '0xshrink'}
-
-    monkeypatch.setattr(strategy_manager, 'place_marketable_sell', fake_sell)
-
-    action = strategy_manager.build_inventory_exit_action(
-        'SHRINK1',
-        'YESS',
-        'NOS',
-        {'best_bid': 0.56},
-        {'best_bid': 0.02},
-        dry_run=False,
-    )
-
-    assert action['action'] == 'sell_yes'
-    assert calls == [4.975, 1.2481]
-    assert action['submitted_qty'] == 1.2481
-    assert action['filled_qty'] == 1.2481
-    assert action['shortfall_details']['available_qty'] == 1.25442
-    assert action['shortfall_details']['attempted_qty'] == 1.26
-    disposals = storage.list_inventory_disposals('SHRINK1')
-    sell_disposals = [item for item in disposals if item['policy_type'] == 'recycler' and item['action'] == 'sell_yes']
-    assert sell_disposals[-1]['tx_hash'] == '0xshrink'
-    assert len(sell_disposals[-1]['response']['attempts']) == 2
-
-
-def test_recycler_marks_dust_inventory_ineligible(monkeypatch):
-    ts = datetime.now(timezone.utc).isoformat()
-    storage.create_market('DUST1', status='open')
-    storage.create_open_lot('DUST1', 'YD1', 'YES', 0.005, 0.40, ts)
-    monkeypatch.setattr(strategy_manager, 'RECYCLER_DUST_QTY_THRESHOLD', 0.01)
-
-    action = strategy_manager.build_inventory_exit_action(
-        'DUST1',
-        'YD1',
-        'ND1',
-        {'best_bid': 0.56},
-        {'best_bid': 0.02},
-        dry_run=False,
-    )
-
-    assert action['action'] == 'hold'
-    assert action['skip_reason'] == 'dust_inventory'
-    assert action['residual_recycler_ineligible'] is True
-    assert action['residual_classification'] == 'dust'
+    assert action['policy_type'] == 'inventory_exit_disabled'
+    assert action['skip_reason'] == 'strategy_inventory_exit_disabled'
+    assert sell_calls == []
+    assert storage.get_pair_balance('EXIT2') == {'YES': 1.0, 'NO': 2.0}
 
 
 def test_no_stale_fallback_path_recomputes_target_from_current_price():

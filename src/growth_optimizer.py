@@ -4,9 +4,6 @@ import math
 import os
 from typing import Any, Optional
 
-from .strategy_sizing import fractional_kelly
-
-
 def _env_flag(name: str, default: bool) -> bool:
     raw = os.getenv(name)
     if raw is None:
@@ -58,13 +55,6 @@ def expected_growth_min_shadow_threshold() -> float:
 
 def expected_growth_conservative_tail_penalty() -> float:
     return max(0.0, _env_float("EXPECTED_GROWTH_CONSERVATIVE_TAIL_PENALTY", 1.25))
-
-
-def position_reeval_growth_optimizer_mode() -> str:
-    raw = str(os.getenv("POSITION_REEVAL_GROWTH_OPTIMIZER_MODE", "shadow")).strip().lower()
-    if raw not in {"off", "shadow", "live"}:
-        return "shadow"
-    return raw
 
 
 def _clip_probability(value: Optional[float], *, epsilon: float) -> float:
@@ -269,105 +259,3 @@ def evaluate_entry_shadow(
         "entry_growth_probability_conservative": p_side_conservative,
     }
 
-
-def current_position_free_cash(
-    *,
-    wallet_free_usdc: Optional[float],
-    effective_bankroll: Optional[float],
-    current_qty: float,
-    current_avg_entry_price: Optional[float],
-) -> float:
-    free_cash = _safe_float(wallet_free_usdc)
-    if free_cash is not None:
-        return max(0.0, free_cash)
-    bankroll = _safe_float(effective_bankroll)
-    avg_entry = _safe_float(current_avg_entry_price)
-    if bankroll is None:
-        return 0.0
-    if avg_entry is None:
-        return max(0.0, bankroll)
-    return max(0.0, bankroll - max(0.0, current_qty) * avg_entry)
-
-
-def candidate_total_qty(current_qty: float, delta_qty: float) -> float:
-    return max(0.0, float(current_qty or 0.0) + float(delta_qty or 0.0))
-
-
-def candidate_cash_after_action(
-    *,
-    free_cash_now: float,
-    delta_qty: float,
-    entry_price: Optional[float],
-    exit_price: Optional[float],
-) -> float:
-    cash = max(0.0, float(free_cash_now or 0.0))
-    delta = float(delta_qty or 0.0)
-    if delta > 0.0:
-        return max(0.0, cash - delta * max(0.0, float(entry_price or 0.0)))
-    if delta < 0.0:
-        return max(0.0, cash + abs(delta) * max(0.0, float(exit_price or 0.0)))
-    return cash
-
-
-def candidate_avg_entry_price(
-    *,
-    current_qty: float,
-    current_avg_entry_price: Optional[float],
-    delta_qty: float,
-    entry_price: Optional[float],
-) -> Optional[float]:
-    qty_now = max(0.0, float(current_qty or 0.0))
-    avg_now = _safe_float(current_avg_entry_price)
-    delta = float(delta_qty or 0.0)
-    if qty_now <= 0.0 and delta <= 0.0:
-        return avg_now
-    if delta <= 0.0:
-        return avg_now
-    if avg_now is None:
-        return _safe_float(entry_price)
-    total_qty = qty_now + delta
-    if total_qty <= 0.0:
-        return avg_now
-    return ((qty_now * avg_now) + (delta * max(0.0, float(entry_price or 0.0)))) / total_qty
-
-
-def reevaluation_candidate_qty_grid(
-    *,
-    current_qty: float,
-    target_add_qty: float,
-) -> dict:
-    qty_now = max(0.0, float(current_qty or 0.0))
-    base_add = max(0.0, float(target_add_qty or 0.0))
-    return {
-        "hold": 0.0,
-        "add_small": 0.5 * base_add,
-        "add_medium": 1.0 * base_add,
-        "reduce_small": -min(qty_now, max(qty_now * 0.25, 0.5 * base_add)),
-        "reduce_medium": -min(qty_now, max(qty_now * 0.50, 1.0 * base_add)),
-    }
-
-
-def target_add_qty_from_kelly(
-    *,
-    probability: Optional[float],
-    quote: Optional[float],
-    effective_bankroll: Optional[float],
-    free_bankroll: Optional[float],
-    kelly_k: float,
-    kelly_multiplier: float,
-    max_trade_notional_multiplier: float,
-    per_trade_cap_pct: float,
-) -> float:
-    p = _safe_float(probability)
-    q = _safe_float(quote)
-    if p is None or q is None or q <= 0.0 or q >= 1.0:
-        return 0.0
-    bankroll = max(0.0, _safe_float(effective_bankroll) or 0.0)
-    available_cash = bankroll if free_bankroll is None else max(0.0, min(bankroll, _safe_float(free_bankroll) or 0.0))
-    f = fractional_kelly(p, q, k=kelly_k) * max(0.0, float(kelly_multiplier))
-    trade_notional = min(
-        bankroll * f,
-        per_trade_cap_pct * bankroll * max(0.0, float(max_trade_notional_multiplier)),
-        available_cash,
-    )
-    return 0.0 if q <= 0.0 else max(0.0, trade_notional / q)

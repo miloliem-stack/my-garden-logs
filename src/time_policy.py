@@ -26,8 +26,6 @@ _SCHEDULE_KEY_MAP = {
     'POLICY_FINAL_MAX_TRADE_NOTIONAL_MULTIPLIER': ('final', 'max_trade_notional_multiplier'),
     'POLICY_FINAL_ALLOW_NEW_ENTRIES': ('final', 'allow_new_entries'),
     'POLICY_LATE_ALLOW_NEW_ENTRIES': ('late', 'allow_new_entries'),
-    'POLICY_FINAL_ALLOW_MERGE': ('final', 'allow_merge'),
-    'POLICY_LATE_ALLOW_MERGE': ('late', 'allow_merge'),
 }
 
 

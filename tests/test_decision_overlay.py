@@ -1,13 +1,23 @@
 import math
 import os
 import sys
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT)
 
 from src.decision_overlay import apply_polarized_tail_overlay
-from src import run_bot
+from src import run_bot, storage
+
+
+def setup_function(fn):
+    os.environ['BOT_DB_PATH'] = str(Path('/tmp') / f'btc_1h_decision_overlay_{fn.__name__}.db')
+    try:
+        os.remove(storage.get_db_path())
+    except FileNotFoundError:
+        pass
+    storage.ensure_db()
 
 
 def _bundle(*, q_yes: float, q_no: float) -> dict:

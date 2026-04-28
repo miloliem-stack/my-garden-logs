@@ -21,7 +21,7 @@ from . import execution
 from .storage import ensure_db
 from . import storage
 from .polymarket_client import LIVE as POLY_LIVE
-from .strategy_manager import build_inventory_exit_action, build_trade_action, decide_and_execute
+from .strategy_manager import build_trade_action, decide_and_execute
 from .strategy_sizing import fractional_kelly
 from .market_router import resolve_active_market_bundle, resolve_active_market_bundle_with_debug
 from .time_policy import apply_schedule_overlay, build_time_policy, policy_schedule_mode, policy_schedule_name
@@ -45,7 +45,6 @@ from .polarization_credibility import (
     polarization_credibility_mode,
     same_side_existing_exposure_stats,
 )
-from .position_reevaluation import evaluate_position_reevaluation
 from .reversal_evidence import compute_reversal_evidence
 from .live_heartbeat import (
     RollingEventBuffer,
@@ -681,13 +680,9 @@ def apply_completed_kline_to_engines(engines, payload) -> bool:
 
 def compute_effective_decision_trade_state(ctx: dict, decision_state: Optional[dict]) -> tuple[bool, str]:
     trading_allowed, disabled_reason = can_trade_context(ctx)
-    reeval_action = None if decision_state is None else decision_state.get('position_reeval_action')
-    if trading_allowed and decision_state is not None and not decision_state.get('trade_allowed') and reeval_action in {None, 'hold'}:
+    if trading_allowed and decision_state is not None and not decision_state.get('trade_allowed'):
         trading_allowed = False
         disabled_reason = decision_state.get('reason') or 'decision_state_blocked'
-    elif (not trading_allowed) and reeval_action == 'reduce_position' and disabled_reason == 'policy_blocks_new_entries':
-        trading_allowed = True
-        disabled_reason = 'ok'
     return bool(trading_allowed), str(disabled_reason or 'ok')
 
 
@@ -1865,23 +1860,6 @@ def build_decision_log_record(
     return decision_log_record
 
 
-def update_position_reeval_persistence(market_id: Optional[str], reeval: Optional[dict], *, ts: Optional[str] = None) -> None:
-    if not market_id or not isinstance(reeval, dict):
-        return
-    updated_ts = ts or datetime.now(timezone.utc).isoformat()
-    target_action = reeval.get('persistence_target_action') or 'hold'
-    if target_action == 'hold':
-        storage.reset_position_management_persistence(market_id, updated_ts=updated_ts)
-        return
-    storage.upsert_position_management_state(
-        market_id,
-        persistence_target_action=target_action,
-        persistence_count=int(reeval.get('persistence_next_count') or 0),
-        last_seen_side=reeval.get('current_position_side'),
-        updated_ts=updated_ts,
-    )
-
-
 def extract_engine_shadow_diagnostics(engine_diagnostics: Optional[dict]) -> dict:
     diagnostics = engine_diagnostics or {}
     last_prediction = diagnostics.get('last_prediction') or {}
@@ -2030,7 +2008,6 @@ def build_trade_context(
         },
         'position_summary': {
             'inflight_exposure': storage.get_inflight_exposure(market_id=market_id) if market_id else 0.0,
-            'mergeable_qty': position.get('mergeable_pair_qty', 0.0),
             'redeemable_qty': position.get('resolved_redeemable_qty', 0.0),
             'available_inventory': position.get('available_inventory', {'YES': 0.0, 'NO': 0.0}),
             'avg_entry_price_yes': position.get('avg_entry_price_yes'),
@@ -2606,31 +2583,12 @@ if __name__ == '__main__':
                             ctx['engine_diagnostics'] = engine_diagnostics
                         if decision_state is not None:
                             decision_state['wallet_state'] = wallet_snapshot
-                            reeval = evaluate_position_reevaluation(
-                                decision_state=decision_state,
-                                trade_context=ctx,
-                                price_history=price_history,
-                                now_ts=now.isoformat(),
-                            )
-                            update_position_reeval_persistence(market_id, reeval, ts=now.isoformat())
                             ctx['position_management_state'] = storage.get_position_management_state(market_id) if market_id else None
-                            ctx['position_reeval'] = reeval
-                            reversal = reeval.get('reversal_evidence') or {}
                             decision_state.update({
-                                'position_reeval_enabled': bool(reeval.get('enabled')),
-                                'position_reeval_action': reeval.get('action'),
-                                'position_reeval_reason': reeval.get('reason'),
-                                'position_reeval_hold_ev_per_share': reeval.get('held_side_hold_ev_per_share'),
-                                'position_reeval_candidate_entry_ev_per_share': reeval.get('candidate_side_entry_ev_per_share'),
-                                'position_reeval_flip_advantage_per_share': reeval.get('flip_advantage_per_share'),
-                                'position_reeval_reversal_score': reversal.get('score'),
-                                'position_reeval_reversal_passed': reversal.get('passes_min_score'),
-                                'position_reeval_shadow_best_action': reeval.get('reevaluation_shadow_best_action'),
-                                'position_reeval_shadow_best_delta_qty': reeval.get('reevaluation_shadow_best_delta_qty'),
-                                'position_reeval_shadow_best_growth_gain': reeval.get('reevaluation_shadow_best_growth_gain'),
-                                'position_reeval_shadow_best_executable': reeval.get('reevaluation_shadow_best_executable'),
-                                'position_reeval_shadow_keep_current_position': reeval.get('reevaluation_shadow_keep_current_position'),
-                                'position_reeval': reeval,
+                                'position_reeval_enabled': False,
+                                'position_reeval_action': 'hold',
+                                'position_reeval_reason': 'position_reeval_disabled',
+                                'position_reeval': None,
                             })
                             ctx['decision_state'] = decision_state
                             ctx['policy'] = decision_state.get('policy') or {}
@@ -2702,22 +2660,7 @@ if __name__ == '__main__':
                         if not trading_allowed:
                             skip_iteration = True
 
-                        exit_action = build_inventory_exit_action(
-                            market_id,
-                            token_yes,
-                            token_no,
-                            yes_quote,
-                            no_quote,
-                            dry_run=(not EXECUTION_ENABLED),
-                        )
-                        if exit_action.get('action') in {'sell_yes', 'sell_no'}:
-                            exit_action['side'] = exit_action['action']
-                            exit_action['qty'] = exit_action.get('submitted_qty') or exit_action.get('target_exit_qty')
-                            exit_action['price'] = exit_action.get('executable_exit_price')
-                            action = exit_action
-                        elif exit_action.get('action') == 'recycle_pair':
-                            action = exit_action
-                        elif skip_iteration:
+                        if skip_iteration:
                             action = None
                         else:
                             ts = datetime.now(timezone.utc).isoformat()

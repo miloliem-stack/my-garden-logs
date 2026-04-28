@@ -147,7 +147,7 @@ def test_polarized_minority_entry_gets_worse_growth_than_balanced_entry(monkeypa
     assert tail['expected_log_growth_entry_conservative'] < balanced['expected_log_growth_entry_conservative']
 
 
-def test_reevaluation_optimizer_can_prefer_hold(monkeypatch):
+def test_reevaluation_optimizer_is_disabled_noop(monkeypatch):
     monkeypatch.setenv('POSITION_REEVAL_ENABLED', 'true')
     monkeypatch.setenv('POSITION_REEVAL_GROWTH_OPTIMIZER_MODE', 'shadow')
     monkeypatch.setenv('POSITION_REEVAL_PERSISTENCE_REQUIRED', '1')
@@ -158,11 +158,14 @@ def test_reevaluation_optimizer_can_prefer_hold(monkeypatch):
         price_history=pd.Series([100.0, 100.2, 100.1, 100.0]),
     )
 
+    assert result['enabled'] is False
+    assert result['action'] == 'hold'
+    assert result['reason'] == 'position_reeval_disabled'
     assert result['reevaluation_shadow_best_action'] == 'hold'
     assert result['reevaluation_shadow_keep_current_position'] is True
 
 
-def test_reevaluation_optimizer_can_prefer_add(monkeypatch):
+def test_reevaluation_optimizer_does_not_recommend_add(monkeypatch):
     monkeypatch.setenv('POSITION_REEVAL_ENABLED', 'true')
     monkeypatch.setenv('POSITION_REEVAL_GROWTH_OPTIMIZER_MODE', 'shadow')
     monkeypatch.setenv('POSITION_REEVAL_PERSISTENCE_REQUIRED', '1')
@@ -173,11 +176,13 @@ def test_reevaluation_optimizer_can_prefer_add(monkeypatch):
         price_history=pd.Series([100.0, 100.5, 101.0, 101.5]),
     )
 
-    assert result['reevaluation_shadow_best_action'] in {'add_small', 'add_medium'}
-    assert result['reevaluation_shadow_best_growth_gain'] > 0.0
+    assert result['enabled'] is False
+    assert result['action'] == 'hold'
+    assert result['reevaluation_shadow_best_action'] == 'hold'
+    assert result['reevaluation_shadow_best_growth_gain'] == 0.0
 
 
-def test_non_executable_tiny_best_actions_are_logged_not_sent(monkeypatch):
+def test_reevaluation_growth_candidates_are_not_generated(monkeypatch):
     monkeypatch.setenv('POSITION_REEVAL_ENABLED', 'true')
     monkeypatch.setenv('POSITION_REEVAL_GROWTH_OPTIMIZER_MODE', 'shadow')
     monkeypatch.setenv('POSITION_REEVAL_PERSISTENCE_REQUIRED', '1')
@@ -200,13 +205,11 @@ def test_non_executable_tiny_best_actions_are_logged_not_sent(monkeypatch):
         price_history=pd.Series([100.0, 100.5, 101.0, 101.5]),
     )
 
-    assert result['reevaluation_shadow_best_action'] in {'add_small', 'add_medium'}
+    assert result['enabled'] is False
+    assert result['action'] == 'hold'
+    assert result['reevaluation_shadow_best_action'] == 'hold'
     assert result['reevaluation_shadow_best_executable'] is False
-    assert any(
-        candidate['reeval_candidate_action'] == result['reevaluation_shadow_best_action']
-        and candidate['reeval_candidate_executable_now'] is False
-        for candidate in result['reevaluation_growth_candidates']
-    )
+    assert result['reevaluation_growth_candidates'] == []
 
 
 def test_shadow_metrics_do_not_change_live_action_selection(monkeypatch):

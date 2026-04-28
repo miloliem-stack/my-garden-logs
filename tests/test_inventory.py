@@ -4,15 +4,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from src import storage
 import os
-import tempfile
+import sqlite3
 from datetime import datetime, timezone
 
 
-def setup_module(module):
-    # ensure fresh DB for tests
+def setup_function(fn):
+    os.environ['BOT_DB_PATH'] = str(Path('/tmp') / f'btc_1h_inventory_{fn.__name__}.db')
     try:
-        os.remove('bot_state.db')
-    except Exception:
+        os.remove(storage.get_db_path())
+    except FileNotFoundError:
         pass
     storage.ensure_db()
 
@@ -70,7 +70,7 @@ def test_resolve_and_redeem():
     bal = storage.get_pair_balance('MKT_C')
     assert bal['YES'] == 0.0 and bal['NO'] == 0.0
     # redeemed_lots should include both sides
-    conn = __import__('sqlite3').connect('bot_state.db')
+    conn = sqlite3.connect(storage.get_db_path())
     cur = conn.cursor()
     cur.execute('SELECT SUM(qty) FROM redeemed_lots WHERE market_id = ?', ('MKT_C',))
     assert float(cur.fetchone()[0]) == 10.0
@@ -92,7 +92,7 @@ def test_merge_consumes_equal_yes_and_no_and_preserves_market_status():
     assert bal['NO'] == 1.0
     assert storage.get_market('MKT_M')['status'] == 'open'
 
-    conn = __import__('sqlite3').connect('bot_state.db')
+    conn = sqlite3.connect(storage.get_db_path())
     cur = conn.cursor()
     cur.execute("SELECT outcome_side, SUM(qty) FROM merged_lots WHERE market_id = ? GROUP BY outcome_side ORDER BY outcome_side", ('MKT_M',))
     assert cur.fetchall() == [('NO', 4.0), ('YES', 4.0)]

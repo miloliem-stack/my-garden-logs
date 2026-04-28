@@ -43,6 +43,26 @@ D_FEATURE_COLUMNS = [
 
 HMM_FEATURE_COLUMNS = A_FEATURE_COLUMNS + D_FEATURE_COLUMNS
 
+FORBIDDEN_HMM_FEATURE_TOKENS = [
+    "q_",
+    "quote",
+    "p_yes",
+    "p_no",
+    "prob",
+    "edge",
+    "tau",
+    "outcome",
+    "pnl",
+    "inventory",
+    "wallet",
+    "order",
+    "fill",
+    "execution",
+    "realized",
+    "market_id",
+    "strike",
+]
+
 
 @dataclass(frozen=True)
 class EntropyThresholds:
@@ -237,8 +257,27 @@ def build_hmm_feature_frame(
 
 
 def hmm_feature_matrix(df: pd.DataFrame, *, feature_columns: Sequence[str] | None = None) -> pd.DataFrame:
-    cols = list(feature_columns or HMM_FEATURE_COLUMNS)
+    cols = resolve_hmm_feature_columns(feature_columns)
     missing = [col for col in cols if col not in df.columns]
     if missing:
         raise ValueError(f"missing HMM feature columns: {missing}")
     return df.loc[:, cols].copy()
+
+
+def resolve_hmm_feature_columns(feature_columns: Sequence[str] | None = None) -> list[str]:
+    cols = list(feature_columns or HMM_FEATURE_COLUMNS)
+    allowed = set(HMM_FEATURE_COLUMNS)
+    unknown = [col for col in cols if col not in allowed]
+    forbidden = [
+        col
+        for col in cols
+        if col not in allowed and any(token in col.lower() for token in FORBIDDEN_HMM_FEATURE_TOKENS)
+    ]
+    if unknown or forbidden:
+        details = []
+        if unknown:
+            details.append(f"non A/D columns requested: {unknown}")
+        if forbidden:
+            details.append(f"forbidden policy/live columns requested: {forbidden}")
+        raise ValueError("; ".join(details))
+    return cols

@@ -62,7 +62,7 @@ def test_strategy_sizing_uses_runtime_effective_bankroll_instead_of_static_env(m
     monkeypatch.setattr(strategy_manager, 'TOTAL_EXPOSURE_CAP', 1.0)
     monkeypatch.setattr(strategy_manager, 'get_inflight_exposure', lambda: 0.0)
     monkeypatch.setattr(strategy_manager, 'get_open_orders', lambda market_id=None: [])
-    monkeypatch.setattr(strategy_manager, 'place_marketable_buy', lambda token_id, qty, limit_price, dry_run, market_id, outcome_side: {'qty': qty, 'limit_price': limit_price})
+    monkeypatch.setattr(strategy_manager, 'place_marketable_buy', lambda token_id, qty, limit_price, dry_run, market_id, outcome_side, **kwargs: {'qty': qty, 'limit_price': limit_price})
 
     decision_state = {
         'p_yes': 0.9,

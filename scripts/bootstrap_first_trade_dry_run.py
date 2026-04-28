@@ -49,7 +49,7 @@ def main():
 
     original_place = strategy_manager.place_marketable_buy
     try:
-        strategy_manager.place_marketable_buy = lambda token_id, qty, limit_price=None, dry_run=True, market_id=None, outcome_side='YES': {
+        strategy_manager.place_marketable_buy = lambda token_id, qty, limit_price=None, dry_run=True, market_id=None, outcome_side='YES', **kwargs: {
             'dry_run': True,
             'token_id': token_id,
             'qty': qty,

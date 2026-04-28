@@ -342,7 +342,7 @@ def test_binance_consumer_retries_after_open_timeout_without_crashing(monkeypatc
 
     asyncio.run(
         run_bot.consume_binance_klines(
-            engine=engine,
+            live_engine=engine,
             state_lock=asyncio.Lock(),
             duration=1,
             console_mode='debug',

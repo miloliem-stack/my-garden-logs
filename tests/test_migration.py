@@ -10,12 +10,13 @@ import migrate_inventory_legacy as mig
 
 
 def setup_function(fn):
+    os.environ['BOT_DB_PATH'] = str((ROOT / 'bot_state.db').resolve())
     try:
-        os.remove('bot_state.db')
-    except Exception:
+        os.remove(storage.get_db_path())
+    except FileNotFoundError:
         pass
     # create legacy tables for testing
-    conn = sqlite3.connect('bot_state.db')
+    conn = sqlite3.connect(storage.get_db_path())
     cur = conn.cursor()
     # legacy lots table (simple)
     cur.execute('''CREATE TABLE lots(id INTEGER PRIMARY KEY AUTOINCREMENT, token_id TEXT, market_id TEXT, qty REAL, avg_price REAL, ts TEXT, tx_hash TEXT, outcome_side TEXT)''')
@@ -33,11 +34,11 @@ def test_dry_run_leaves_db_unchanged():
     conn.commit()
     conn.close()
 
-    stats = mig.migrate(Path('bot_state.db'), dry_run=True)
+    stats = mig.migrate(storage.get_db_path(), dry_run=True)
     assert stats['examined'] == 1
     # ensure open_lots still not created
     storage.ensure_db()
-    conn = sqlite3.connect('bot_state.db')
+    conn = sqlite3.connect(storage.get_db_path())
     cur = conn.cursor()
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='open_lots'")
     assert cur.fetchone() is not None
@@ -48,16 +49,16 @@ def test_dry_run_leaves_db_unchanged():
 
 def test_migrate_clearly_mappable_row():
     # create a mappable row with explicit outcome_side
-    conn = sqlite3.connect('bot_state.db')
+    conn = sqlite3.connect(storage.get_db_path())
     cur = conn.cursor()
     cur.execute("INSERT INTO lots(token_id, market_id, qty, avg_price, ts, outcome_side) VALUES (?, ?, ?, ?, ?, ?)", ('TOK2', 'M2', 3.0, 0.55, 'ts2', 'YES'))
     conn.commit()
     conn.close()
 
-    stats = mig.migrate(Path('bot_state.db'), dry_run=False, force=True)
+    stats = mig.migrate(storage.get_db_path(), dry_run=False, force=True)
     assert stats['migrated'] >= 1
     # ensure open_lots has migrated entry
-    conn = sqlite3.connect('bot_state.db')
+    conn = sqlite3.connect(storage.get_db_path())
     cur = conn.cursor()
     cur.execute('SELECT COUNT(*) FROM open_lots WHERE market_id = ? AND token_id = ?', ('M2', 'TOK2'))
     assert cur.fetchone()[0] == 1
@@ -66,15 +67,15 @@ def test_migrate_clearly_mappable_row():
 
 def test_quarantine_missing_fields():
     # insert an ambiguous row missing token_id
-    conn = sqlite3.connect('bot_state.db')
+    conn = sqlite3.connect(storage.get_db_path())
     cur = conn.cursor()
     cur.execute("INSERT INTO lots(token_id, market_id, qty, avg_price, ts) VALUES (?, ?, ?, ?, ?)", (None, None, 2.0, 0.5, 'ts3'))
     conn.commit()
     conn.close()
 
-    stats = mig.migrate(Path('bot_state.db'), dry_run=False, force=True)
+    stats = mig.migrate(storage.get_db_path(), dry_run=False, force=True)
     # ensure quarantine table contains entries
-    conn = sqlite3.connect('bot_state.db')
+    conn = sqlite3.connect(storage.get_db_path())
     cur = conn.cursor()
     cur.execute('SELECT COUNT(*) FROM legacy_unmapped_rows')
     assert cur.fetchone()[0] >= 1

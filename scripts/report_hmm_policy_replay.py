@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--min-samples", type=int, default=100)
     parser.add_argument("--confidence-threshold", type=float, default=0.70)
     parser.add_argument("--next-same-threshold", type=float, default=0.65)
+    parser.add_argument("--persistence-threshold", type=int, default=2)
     args = parser.parse_args()
     outputs = report_policy_replay(
         args.input,
@@ -22,10 +23,10 @@ def main():
         min_samples=args.min_samples,
         confidence_threshold=args.confidence_threshold,
         next_same_threshold=args.next_same_threshold,
+        persistence_threshold=args.persistence_threshold,
     )
     print(f"wrote {len(outputs)} reports to {args.output_dir}")
 
 
 if __name__ == "__main__":
     main()
-

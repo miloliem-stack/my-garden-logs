@@ -20,20 +20,25 @@ def main():
     parser.add_argument("--state-column", default="regime_policy_state")
     parser.add_argument("--confidence-column", default="hmm_map_confidence")
     args = parser.parse_args()
-    path = build_regime_overlay_html(
-        args.input,
-        args.output,
-        png_output=args.png_output,
-        start=args.start,
-        end=args.end,
-        title=args.title,
-        max_rows=args.max_rows,
-        state_column=args.state_column,
-        confidence_column=args.confidence_column,
-    )
+    try:
+        path = build_regime_overlay_html(
+            args.input,
+            args.output,
+            png_output=args.png_output,
+            start=args.start,
+            end=args.end,
+            title=args.title,
+            max_rows=args.max_rows,
+            state_column=args.state_column,
+            confidence_column=args.confidence_column,
+        )
+    except ImportError as exc:
+        raise SystemExit(
+            "Plotly is required to render the HMM regime overlay HTML. "
+            "Install plotly in the research environment, then rerun this command."
+        ) from exc
     print(f"wrote {path}")
 
 
 if __name__ == "__main__":
     main()
-
