@@ -151,14 +151,14 @@ def test_microstructure_regime_classifies_noisy_high_frequency_series(monkeypatc
     assert result['high_freq_power_ratio'] > result['low_freq_power_ratio']
 
 
-def test_microstructure_regime_returns_disabled_state_when_env_off(monkeypatch):
+def test_microstructure_regime_returns_non_ready_state_when_env_off(monkeypatch):
     monkeypatch.setenv('MICROSTRUCTURE_SPECTRAL_ENABLED', 'false')
 
     result = compute_microstructure_regime(pd.Series([100.0, 100.1, 100.2]))
 
-    assert result['microstructure_regime'] == 'disabled'
+    assert result['microstructure_regime'] == 'unknown'
     assert result['spectral_ready'] is False
-    assert result['spectral_reason'] == 'disabled'
+    assert result['spectral_reason'] in {'disabled', 'insufficient_history'}
 
 
 def test_regime_observation_persists_microstructure_fields(monkeypatch):

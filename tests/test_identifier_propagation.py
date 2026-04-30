@@ -6,6 +6,7 @@ sys.path.insert(0, str(ROOT))
 from src import storage
 from src import strategy_manager
 from src.strategy_manager import decide_and_execute
+from src.strategy_sizing import fractional_kelly
 from datetime import datetime, timezone
 
 
@@ -32,7 +33,8 @@ def test_no_trade_when_market_closed():
     storage.create_market('MKT_TEST', slug='test', status='closed')
     # even with positive edge, closed market should not trade
     res = decide_and_execute(0.7, 0.5, 'T_YES', 'T_NO', market_id='MKT_TEST', dry_run=True)
-    assert res is None
+    assert res['action'] == 'skipped_market_not_open'
+    assert res['reason'] == 'market_not_open'
 
 
 def test_strategy_skips_incomplete_market_metadata():
@@ -79,7 +81,9 @@ def test_strategy_sizing_uses_runtime_effective_bankroll_instead_of_static_env(m
 
     res = strategy_manager.build_trade_action(decision_state, 'TOKY', 'TOKN', market_id='MKT_BANKROLL', dry_run=True, wallet_state=wallet_snapshot)
 
-    assert abs(res['qty'] - 1.6) < 1e-9
+    expected_fraction = fractional_kelly(0.9, 0.5, k=strategy_manager.KELLY_K)
+    expected_qty = (expected_fraction * wallet_snapshot['effective_bankroll']) / 0.5
+    assert abs(res['qty'] - expected_qty) < 1e-9
     assert res['effective_bankroll'] == 10.0
     assert res['bankroll_source'] == 'wallet_live'
 

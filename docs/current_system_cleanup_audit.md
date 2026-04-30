@@ -46,6 +46,40 @@ Phase 2C later removed/deprecated live position reevaluation. `src/position_reev
 - 11 failed
 - 1 skipped
 
+Phase 3 later archived the legacy live-style replay harness, deleted the unused `src/strategy_signal.py`, migrated obsolete replay/shadow tests to archived-status or current-state assertions, and removed repo-local generated junk outside `.venv`/`.git`.
+
+- 452 passed
+- 1 skipped
+
+Current-state note:
+
+- The authoritative current active/archive split is `docs/repo_map.md`.
+- `docs/README_BTC_STACK.md` is the real BTC-1H project description.
+- `README.md` is intentionally kept as a public decoy file.
+- Some detailed sections below are historical snapshots written before Phase 3 and should be read in that context.
+
+Phase 4A later added the first real offline decision replay adapter around the new decision contract:
+
+- `src/research/decision_replay_adapter.py`
+- `scripts/run_decision_replay_adapter.py`
+- `docs/decision_replay_adapter.md`
+
+This replay path is dataframe-oriented, offline-only, and does not import from `archive/`, query operational organs, or modify live trading behavior.
+
+- 470 passed
+- 1 skipped
+
+Phase 4B later added the first end-to-end offline HMM-to-decision replay handoff pipeline:
+
+- `src/research/hmm_decision_replay_pipeline.py`
+- `scripts/run_hmm_decision_replay_pipeline.py`
+- `docs/hmm_decision_replay_pipeline.md`
+
+This pipeline aligns HMM walk-forward output aliases into the canonical decision replay schema, validates missing fields, and feeds the result into the offline decision replay adapter. It does not import from `archive/`, mutate HMM models or `p_yes`, or touch live runtime modules.
+
+- 484 passed
+- 1 skipped
+
 See `docs/current_test_failures.md` for the refreshed failure list.
 
 The failure list and first-pass classification are in `docs/current_test_failures.md`. The current failures are useful evidence of repo drift: live-path interface drift, storage schema/test fixture drift, stale decision-layer expectations, replay harness drift, and shadow/regime semantic confusion.

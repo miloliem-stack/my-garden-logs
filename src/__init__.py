@@ -4,7 +4,6 @@ __all__ = [
     "model_ar_egarch_fhs",
     "binance_feed",
     "polymarket_feed",
-    "strategy_signal",
     "strategy_sizing",
     "storage",
     "run_bot",

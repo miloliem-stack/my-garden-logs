@@ -156,6 +156,11 @@ def _policy_blockers(input_data: DecisionInput) -> list[str]:
     safety = input_data.safety_veto
     expected = input_data.expected_growth
     hmm = input_data.hmm_policy_state
+    min_posterior_confidence = float(input_data.diagnostics.get("min_posterior_confidence", MIN_HMM_POSTERIOR_CONFIDENCE))
+    min_next_same_state_confidence = float(
+        input_data.diagnostics.get("min_next_same_state_confidence", MIN_HMM_NEXT_SAME_STATE_CONFIDENCE)
+    )
+    min_persistence_count = int(input_data.diagnostics.get("min_persistence_count", MIN_HMM_PERSISTENCE_COUNT))
 
     if not tau_policy.allow_new_entries:
         blockers.append("new_entries_disabled")
@@ -180,11 +185,11 @@ def _policy_blockers(input_data: DecisionInput) -> list[str]:
     if hmm is not None:
         if hmm.policy_state == "transition_uncertain":
             blockers.append("hmm_transition_uncertain")
-        if hmm.posterior_confidence is not None and float(hmm.posterior_confidence) < MIN_HMM_POSTERIOR_CONFIDENCE:
+        if hmm.posterior_confidence is not None and float(hmm.posterior_confidence) < min_posterior_confidence:
             blockers.append("hmm_low_posterior_confidence")
-        if hmm.next_same_state_confidence is not None and float(hmm.next_same_state_confidence) < MIN_HMM_NEXT_SAME_STATE_CONFIDENCE:
+        if hmm.next_same_state_confidence is not None and float(hmm.next_same_state_confidence) < min_next_same_state_confidence:
             blockers.append("hmm_low_next_same_state_confidence")
-        if hmm.persistence_count is not None and int(hmm.persistence_count) < MIN_HMM_PERSISTENCE_COUNT:
+        if hmm.persistence_count is not None and int(hmm.persistence_count) < min_persistence_count:
             blockers.append("hmm_insufficient_persistence")
 
     return blockers

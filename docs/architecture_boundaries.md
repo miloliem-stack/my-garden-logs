@@ -57,9 +57,11 @@ Expected growth should become a real offline replay veto. Tail/polarization and 
 The offline scaffold for the future contract is:
 
 - `src/research/decision_contract.py`
+- `src/research/decision_replay_adapter.py`
 - `docs/decision_contract.md`
+- `docs/decision_replay_adapter.md`
 
-It is not live-wired and must not query execution, storage, wallet, redeemer, or venue clients.
+It is not live-wired and must not query execution, storage, wallet, redeemer, or venue clients. The replay adapter is the first real dataframe-style path around that contract and remains offline-only.
 
 Strategy-level merge, pair-lock, and pair-recycling are removed/deprecated and should not be reintroduced as hidden live behavior. If the bot needs pre-resolution inventory management later, design it as an explicit sell-before-resolution policy with its own replay tests and operator controls.
 
@@ -90,9 +92,20 @@ Normal settlement redemption, loser finalization, receipt reconciliation, and st
 
 ## Legacy Replay
 
-`src/policy_replay.py` is legacy. It currently exercises live-style strategy-manager behavior and should not be expanded as the future replay architecture.
+The old live-style replay harness is archived under `archive/legacy_replay/`. The active `src/policy_replay.py` path is only a compatibility shim that raises an archive/deprecation error and should not be expanded.
 
 The future replay direction is the offline dataframe-style HMM policy replay scaffold under:
 
 - `src/research/hmm_policy_replay.py`
 - `scripts/report_hmm_policy_replay.py`
+
+The new decision replay direction is:
+
+- `src/research/decision_replay_adapter.py`
+- `scripts/run_decision_replay_adapter.py`
+- `src/research/hmm_decision_replay_pipeline.py`
+- `scripts/run_hmm_decision_replay_pipeline.py`
+
+This adapter evaluates decision eligibility from replay rows through the explicit decision contract. It does not simulate execution realism or realized PnL.
+
+The HMM decision replay pipeline is the offline handoff layer from HMM walk-forward outputs into that adapter. It may consume HMM state/confidence outputs, probability fields, quotes, tau fields, expected-growth fields, safety veto fields, and outcomes for offline evaluation, but it must not feed those policy fields back into HMM training or mutate `p_yes`.

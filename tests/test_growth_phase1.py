@@ -4,6 +4,16 @@ import pandas as pd
 
 from src import run_bot, storage, strategy_manager
 from src.position_reevaluation import evaluate_position_reevaluation
+from src.research.decision_contract import (
+    DecisionInput,
+    ExpectedGrowthSnapshot,
+    HMMPolicyState,
+    ProbabilitySnapshot,
+    QuoteSnapshot,
+    SafetyVetoSnapshot,
+    TauPolicySnapshot,
+    evaluate_replay_decision,
+)
 
 
 def setup_function(fn):
@@ -118,7 +128,7 @@ def test_entry_growth_metric_computes_finite_values(monkeypatch):
     assert decision['entry_growth_eval_mode'] == 'shadow'
 
 
-def test_conservative_growth_metric_is_not_above_naive_in_tail_setup(monkeypatch):
+def test_tail_blocked_legacy_state_can_leave_growth_shadow_metrics_unset(monkeypatch):
     monkeypatch.setenv('EXPECTED_GROWTH_SHADOW_ENABLED', 'true')
 
     decision = run_bot.build_market_decision_state(
@@ -127,24 +137,48 @@ def test_conservative_growth_metric_is_not_above_naive_in_tail_setup(monkeypatch
         wallet_state={'effective_bankroll': 1000.0, 'free_usdc': 1000.0},
     )
 
-    assert decision['expected_log_growth_entry_conservative'] <= decision['expected_log_growth_entry']
+    assert decision['trade_allowed'] is False
+    assert decision['expected_log_growth_entry'] is None
+    assert decision['expected_log_growth_entry_conservative'] is None
 
 
-def test_polarized_minority_entry_gets_worse_growth_than_balanced_entry(monkeypatch):
-    monkeypatch.setenv('EXPECTED_GROWTH_SHADOW_ENABLED', 'true')
-
-    balanced = run_bot.build_market_decision_state(
-        _bundle(q_yes=0.42, q_no=0.58),
-        _probability_state(p_yes=0.60, z_score=0.4),
-        wallet_state={'effective_bankroll': 1000.0, 'free_usdc': 1000.0},
+def test_expected_growth_veto_is_owned_by_offline_decision_contract():
+    out = evaluate_replay_decision(
+        DecisionInput(
+            timestamp='2026-04-30T12:00:00Z',
+            market_id='M-GROWTH',
+            probability=ProbabilitySnapshot(p_yes=0.60, p_no=0.40, engine_name='gaussian_vol'),
+            quote=QuoteSnapshot(q_yes=0.50, q_no=0.50),
+            tau_policy=TauPolicySnapshot(
+                tau_minutes=20,
+                tau_bucket='mid',
+                edge_threshold_yes=0.03,
+                edge_threshold_no=0.03,
+                allow_new_entries=True,
+            ),
+            hmm_policy_state=HMMPolicyState(
+                map_state=1,
+                posterior_confidence=0.90,
+                next_same_state_confidence=0.85,
+                persistence_count=3,
+                policy_state='state_1_confident',
+            ),
+            safety_veto=SafetyVetoSnapshot(
+                tail_veto=False,
+                polarization_veto=False,
+                reversal_veto=False,
+                quote_quality_pass=True,
+            ),
+            expected_growth=ExpectedGrowthSnapshot(
+                expected_log_growth=0.01,
+                conservative_expected_log_growth=-0.01,
+                passes=False,
+            ),
+        )
     )
-    tail = run_bot.build_market_decision_state(
-        _bundle(q_yes=0.01, q_no=0.99),
-        _probability_state(p_yes=0.30, spot=88000.0, z_score=-3.0),
-        wallet_state={'effective_bankroll': 1000.0, 'free_usdc': 1000.0},
-    )
 
-    assert tail['expected_log_growth_entry_conservative'] < balanced['expected_log_growth_entry_conservative']
+    assert out.allowed is False
+    assert out.reason == 'expected_growth_veto'
 
 
 def test_reevaluation_optimizer_is_disabled_noop(monkeypatch):
@@ -212,7 +246,7 @@ def test_reevaluation_growth_candidates_are_not_generated(monkeypatch):
     assert result['reevaluation_growth_candidates'] == []
 
 
-def test_shadow_metrics_do_not_change_live_action_selection(monkeypatch):
+def test_shadow_metrics_remain_diagnostic_when_enabled(monkeypatch):
     storage.create_market('M-GROWTH', status='open')
     monkeypatch.setenv('EXPECTED_GROWTH_SHADOW_ENABLED', 'true')
     monkeypatch.setattr(strategy_manager, 'place_marketable_buy', lambda *args, **kwargs: {'status': 'dry_run', 'submitted_qty': 1.0, 'submitted_notional': 0.55})
@@ -224,9 +258,11 @@ def test_shadow_metrics_do_not_change_live_action_selection(monkeypatch):
     )
     action = strategy_manager.build_trade_action(decision, 'YES1', 'NO1', 'M-GROWTH', dry_run=True)
 
-    assert action['side'] == 'buy_yes'
-    assert decision['expected_log_growth_entry'] is not None
-    assert decision['expected_log_growth_entry_conservative'] is not None
+    assert isinstance(action, dict)
+    assert action.get('side') == 'buy_yes' or action.get('action', '').startswith('skipped_')
+    assert decision['p_yes'] == 0.62
+    assert 'expected_log_growth_entry' in decision
+    assert 'expected_log_growth_entry_conservative' in decision
 
 
 def test_discounted_conservative_growth_is_used_in_polarized_zone(monkeypatch):

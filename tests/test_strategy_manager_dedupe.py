@@ -67,6 +67,7 @@ def test_same_side_inventory_blocks_new_entry_when_disabled(monkeypatch):
     storage.create_market('DED3', status='open')
     storage.create_open_lot('DED3', 'YES3', 'YES', 3.0, 0.42, ts, tx_hash='tx-held')
     monkeypatch.setattr(strategy_manager, 'ALLOW_SAME_SIDE_ENTRY', False)
+    monkeypatch.setenv('REGIME_ENTRY_GUARD_MODE', 'off')
     monkeypatch.setattr(strategy_manager, 'place_marketable_buy', lambda *args, **kwargs: {'status': 'should_not_place'})
     decision_state = {
         'q_yes': 0.4,

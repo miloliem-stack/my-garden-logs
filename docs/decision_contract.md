@@ -69,4 +69,8 @@ Strategy-level merge, pair-lock, and pair-recycling are not part of the decision
 
 The legacy live decision stack remains scattered across `run_bot.py`, `strategy_manager.py`, `decision_overlay.py`, `polarization_credibility.py`, `growth_optimizer.py`, `reversal_evidence.py`, `position_reevaluation.py`, `time_policy.py`, and `regime_detector.py`.
 
+The old live-style replay harness is archived under `archive/legacy_replay/`. New replay-first work should target this decision contract and the HMM research replay stack, not `src/policy_replay.py`.
+
 This contract supersedes that architecture conceptually, but does not change live behavior yet.
+
+The first dataframe-oriented caller for this contract is `src/research/decision_replay_adapter.py`; see `docs/decision_replay_adapter.md`.

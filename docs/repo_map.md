@@ -42,16 +42,22 @@ This is a concise orientation map for the BTC-1H repo. It is not a deletion plan
 - `src/research/hmm_dataset.py` - keep. Offline replay dataset builder.
 - `src/research/hmm_walk_forward.py` - keep. Causal walk-forward HMM replay.
 - `src/research/hmm_policy_replay.py` - keep. Offline policy comparison.
+- `src/research/hmm_decision_replay_pipeline.py` - keep. Offline HMM-output to decision-replay handoff pipeline.
 - `src/research/hmm_visuals.py` - keep. Offline visualization.
 - `scripts/build_hmm_replay_dataset.py` - keep.
 - `scripts/run_hmm_walk_forward_replay.py` - keep.
 - `scripts/report_hmm_policy_replay.py` - keep.
 - `scripts/plot_hmm_regime_overlay.py` - keep.
+- `scripts/run_hmm_decision_replay_pipeline.py` - keep.
+- `docs/hmm_decision_replay_pipeline.md` - keep.
 
 ## Decision Contract Scaffold
 
 - `src/research/decision_contract.py` - keep. Offline replay-first future decision-layer contract.
+- `src/research/decision_replay_adapter.py` - keep. Offline dataframe-to-decision-contract replay adapter.
 - `docs/decision_contract.md` - keep. Contract documentation and boundaries.
+- `docs/decision_replay_adapter.md` - keep. Replay adapter schema and reporting notes.
+- `scripts/run_decision_replay_adapter.py` - keep. Offline adapter CLI.
 
 ## Legacy Decision Layer
 
@@ -64,18 +70,22 @@ This is a concise orientation map for the BTC-1H repo. It is not a deletion plan
 - `src/position_reevaluation.py` - legacy/no-op compatibility hook, retained for now. Live add/reduce/flip reevaluation is disabled.
 - `src/regime_detector.py` - legacy but retained for now. Not the new HMM.
 - `src/strategy_sizing.py` - keep.
-- `src/strategy_signal.py` - delete candidate later after manual confirmation.
+- `src/strategy_signal.py` - deleted in Phase 3. It had no active imports.
 
 Strategy-level merge, pair-lock, pair-recycling, and live position reevaluation paths are removed/deprecated. `build_inventory_exit_action()` and `evaluate_position_reevaluation()` are no-op compatibility hooks; future early inventory management should be a separately designed sell-before-resolution or regime-switch policy with replay tests.
 
-## Legacy Replay / Policy Harness
+## Archived Legacy Replay
 
-- `src/policy_replay.py` - legacy but retained for now. Do not expand as future replay architecture.
-- `scripts/replay_policy_scenarios.py` - legacy but retained for now.
-- `scripts/sweep_time_policy.py` - legacy but retained for now.
-- `scripts/report_policy_ablation.py` - legacy but retained for now.
-- `config/policy_schedules.json` - legacy but retained for now.
-- `scenarios/policy/scenario_library.json` - legacy but retained for tests/replay migration.
+- `archive/legacy_replay/policy_replay.py` - archived reference copy of the legacy live-style replay harness.
+- `archive/legacy_replay/replay_policy_scenarios.py` - archived legacy CLI.
+- `archive/legacy_replay/sweep_time_policy.py` - archived legacy CLI.
+- `archive/legacy_replay/report_policy_ablation.py` - archived legacy CLI.
+- `archive/legacy_replay/policy_schedules.json` - archived legacy config.
+- `archive/legacy_replay/scenario_library.json` - archived legacy scenarios.
+- `src/policy_replay.py` - keep as a compatibility shim only. New code must not build on it.
+- `scripts/replay_policy_scenarios.py` - keep as a deprecation wrapper only.
+- `scripts/sweep_time_policy.py` - keep as a deprecation wrapper only.
+- `scripts/report_policy_ablation.py` - keep as a deprecation wrapper only.
 
 ## Data Collection / Recorder
 
@@ -104,12 +114,14 @@ Strategy-level merge, pair-lock, pair-recycling, and live position reevaluation 
 
 ## Docs / Config / Tests
 
-- `README.md` - keep, current orientation.
+- `README.md` - keep as the public decoy README.
+- `docs/README_BTC_STACK.md` - keep. Real BTC-1H repo description.
 - `README_INTERNAL_BOT_NOTES.md` - keep.
 - `docs/hmm_research_scaffold.md` - keep.
 - `docs/current_test_failures.md` - keep and update with test status.
 - `docs/current_system_cleanup_audit.md` - keep.
 - `docs/architecture_boundaries.md` - keep.
 - `docs/repo_map.md` - keep.
+- `archive/README.md` - keep. Archive policy and boundaries.
 - `requirements.txt` - keep.
 - `tests/` - keep. Some tests are stale, but many protect live venue behavior.

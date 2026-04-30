@@ -17,7 +17,7 @@ The intended architecture is:
 
 Live runtime starts from `src/run_bot.py` and flows through market routing, quote feeds, the probability engine, the legacy decision/guard stack, wallet state, strategy action construction, execution, storage, and settlement.
 
-Offline research lives in the probability backtest/evaluation scripts, dataset builders, loss forensics, legacy policy replay, and the new HMM scaffold under `src/research/` plus `scripts/*hmm*`.
+Offline research lives in the probability backtest/evaluation scripts, dataset builders, loss forensics, and the new HMM scaffold under `src/research/` plus `scripts/*hmm*`.
 
 Do not treat research code as live trading code unless a later PR explicitly wires it in.
 
@@ -64,9 +64,27 @@ The planned replacement is a replay-first, regime-conditioned decision layer. Ex
 
 The offline scaffold for that future contract lives in `src/research/decision_contract.py`; see [docs/decision_contract.md](docs/decision_contract.md). It is not live-wired.
 
+The first real revamped replay path around that contract now lives in:
+
+- `src/research/decision_replay_adapter.py`
+- `scripts/run_decision_replay_adapter.py`
+- [docs/decision_replay_adapter.md](decision_replay_adapter.md)
+
+It converts replay rows into explicit decision-contract inputs, applies expected-growth, safety-veto, tau, and HMM abstention logic, and emits offline replay outputs. It does not query wallet/storage/execution, simulate fills, or change live behavior.
+
+The first end-to-end HMM-to-decision handoff now lives in:
+
+- `src/research/hmm_decision_replay_pipeline.py`
+- `scripts/run_hmm_decision_replay_pipeline.py`
+- [docs/hmm_decision_replay_pipeline.md](hmm_decision_replay_pipeline.md)
+
+This pipeline aligns real HMM walk-forward output aliases into the canonical decision replay schema, validates missing fields strictly by default, and runs the decision replay adapter without mutating HMMs, `p_yes`, or live state.
+
 Strategy-level merge, pair-lock, pair-recycling, and live position reevaluation behavior have been removed/deprecated. The bot no longer runs hidden add/reduce/flip inventory management after entry. If early inventory management is needed later, it should be designed as an explicit sell-before-resolution or regime-switch policy with replay tests and operator controls.
 
 Legacy `POSITION_REEVAL_*` environment flags are ignored by the compatibility hook.
+
+The old live-style policy replay stack is archived under `archive/legacy_replay/`. The active `src/policy_replay.py` path is now only a compatibility shim that raises an archive/deprecation error.
 
 ## Protected Operational Organs
 
@@ -91,11 +109,10 @@ Settlement redemption remains protected. Historical merge audit tables and recei
 
 Current full-suite status:
 
-- 449 passed
-- 11 failed
+- 484 passed
 - 1 skipped
 
-The failures are documented and grouped in [docs/current_test_failures.md](docs/current_test_failures.md). They are treated as evidence of repo drift, not ignored.
+The current status note is in [docs/current_test_failures.md](docs/current_test_failures.md).
 
 For the broader cleanup/refactor audit, see [docs/current_system_cleanup_audit.md](docs/current_system_cleanup_audit.md).
 
@@ -108,4 +125,6 @@ For the broader cleanup/refactor audit, see [docs/current_system_cleanup_audit.m
 .venv/bin/python scripts/run_hmm_walk_forward_replay.py --help
 .venv/bin/python scripts/report_hmm_policy_replay.py --help
 .venv/bin/python scripts/plot_hmm_regime_overlay.py --help
+.venv/bin/python scripts/run_decision_replay_adapter.py --help
+.venv/bin/python scripts/run_hmm_decision_replay_pipeline.py --help
 ```
